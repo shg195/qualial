@@ -8,7 +8,7 @@
 
 ## デモ
 
-公開URL：（GitHub Pages デプロイ後に追記）
+公開URL：https://shg195.github.io/qualial/
 
 ## 主な機能
 
