@@ -1053,6 +1053,8 @@
     <div class="result__actions">
       <button class="action-btn" id="restartBtn">も う 一 度</button>
       <button class="action-btn" id="shareBtn">結 果 を コ ピ ー</button>
+      <button class="action-btn" id="saveImageBtn">画 像 を 保 存</button>
+      <button class="action-btn" id="xShareBtn">X で 共 有</button>
     </div>
   </div>
 
@@ -1087,6 +1089,12 @@
   const RUBBER_DAMP = 0.28;     // 閾値超過時の減衰係数
   const MAX_OVERFLOW = 50;      // 閾値超過の最大量(px)
 
+  // シェア機能
+  const SHARE_IMAGE_WIDTH = 810;
+  const SHARE_IMAGE_HEIGHT = 1080;
+  const SITE_URL = window.location.origin + window.location.pathname;
+  const X_SHARE_HASHTAG = 'クオリアル';
+
   // ─────────── 状態 ───────────
   let currentQ = 0;
   let lowBound = HUE_MIN;
@@ -1097,6 +1105,7 @@
   let startX = 0;
   let dx = 0;
   let pointerId = null;
+  let finalHue = null; // 結果確定時に設定。シェア機能から参照
 
   // ─────────── DOM ───────────
   const intro = document.getElementById('intro');
@@ -1273,7 +1282,7 @@
   const SAMPLE_OFFSETS = [-15, -7, 0, 7, 15];
 
   function finishTest() {
-    const finalHue = Math.round((lowBound + highBound) / 2);
+    finalHue = Math.round((lowBound + highBound) / 2);
     const userColor = `hsl(${finalHue}, ${SATURATION}%, ${LIGHTNESS}%)`;
 
     // バー上のマーカー（位置と色）
@@ -1375,6 +1384,141 @@
       });
     }
   });
+
+  // ─────────── シェア機能（画像保存 / X共有） ───────────
+  // Canvas で結果カードを描画して返す
+  function buildShareCanvas(hue) {
+    const W = SHARE_IMAGE_WIDTH;
+    const H = SHARE_IMAGE_HEIGHT;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // 背景（paper）
+    ctx.fillStyle = '#faf7f0';
+    ctx.fillRect(0, 0, W, H);
+
+    // 二重枠（外側細線・紙の額装表現）
+    ctx.strokeStyle = '#c8bfae';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(24, 24, W - 48, H - 48);
+
+    const mincho = '"Shippori Mincho B1", "Yu Mincho", serif';
+    const sans = '"Noto Sans JP", sans-serif';
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+
+    // ブランド「クオリアル」
+    ctx.font = `700 56px ${mincho}`;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText('クオリアル', W / 2, 140);
+
+    // 「─ Qualial ─」
+    ctx.font = `400 22px ${mincho}`;
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillText('─ Qualial ─', W / 2, 180);
+
+    // 「私 の 境 目」（朱）
+    ctx.font = `700 36px ${mincho}`;
+    ctx.fillStyle = '#8b2929';
+    ctx.fillText('私 の 境 目', W / 2, 270);
+
+    // 境界色スウォッチ
+    const swatchSize = 280;
+    const swatchX = (W - swatchSize) / 2;
+    const swatchY = 320;
+    ctx.fillStyle = `hsl(${hue}, ${SATURATION}%, ${LIGHTNESS}%)`;
+    ctx.fillRect(swatchX, swatchY, swatchSize, swatchSize);
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.strokeRect(swatchX, swatchY, swatchSize, swatchSize);
+
+    // 色相数値
+    ctx.font = `700 64px ${mincho}`;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText(`${hue}°`, W / 2, swatchY + swatchSize + 80);
+
+    // 「色相」キャプション
+    ctx.font = `400 20px ${mincho}`;
+    ctx.fillStyle = '#8a8378';
+    ctx.fillText('色 相', W / 2, swatchY + swatchSize + 110);
+
+    // 中間色サンプル 5 色
+    const sampleSize = 100;
+    const sampleGap = 18;
+    const sampleY = swatchY + swatchSize + 160;
+    const totalSamplesWidth = sampleSize * 5 + sampleGap * 4;
+    const samplesStartX = (W - totalSamplesWidth) / 2;
+    SAMPLE_OFFSETS.forEach((offset, i) => {
+      const sampleHue = Math.max(HUE_MIN, Math.min(HUE_MAX, hue + offset));
+      const x = samplesStartX + i * (sampleSize + sampleGap);
+      ctx.fillStyle = `hsl(${sampleHue}, ${SATURATION}%, ${LIGHTNESS}%)`;
+      ctx.fillRect(x, sampleY, sampleSize, sampleSize);
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.strokeRect(x, sampleY, sampleSize, sampleSize);
+    });
+
+    // 軸ラベル「緑 ← 境目 → 青」
+    const axisY = sampleY + sampleSize + 38;
+    ctx.font = `700 22px ${mincho}`;
+    ctx.fillStyle = 'hsl(140, 50%, 28%)';
+    ctx.fillText('緑', samplesStartX + sampleSize / 2, axisY);
+    ctx.fillStyle = '#8a8378';
+    ctx.font = `400 18px ${mincho}`;
+    ctx.fillText('←', samplesStartX + sampleSize + sampleGap + sampleSize / 2, axisY);
+    ctx.font = `700 20px ${mincho}`;
+    ctx.fillStyle = '#8b2929';
+    ctx.fillText('境目', W / 2, axisY);
+    ctx.font = `400 18px ${mincho}`;
+    ctx.fillStyle = '#8a8378';
+    ctx.fillText('→', samplesStartX + (sampleSize + sampleGap) * 3 + sampleSize / 2, axisY);
+    ctx.font = `700 22px ${mincho}`;
+    ctx.fillStyle = 'hsl(220, 65%, 32%)';
+    ctx.fillText('青', samplesStartX + (sampleSize + sampleGap) * 4 + sampleSize / 2, axisY);
+
+    // サイトURL（小・下部）
+    ctx.font = `400 16px ${sans}`;
+    ctx.fillStyle = '#8a8378';
+    ctx.fillText(SITE_URL, W / 2, H - 60);
+
+    return canvas;
+  }
+
+  async function downloadShareImage() {
+    if (finalHue === null) return;
+    // フォントロード完了を待つ（Canvas で Web フォントを正しく描画するため）
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+    const canvas = buildShareCanvas(finalHue);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kuoriaru-${finalHue}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  }
+
+  function shareToX() {
+    if (finalHue === null) return;
+    const text = `色相 ${finalHue}° ─ 私の「緑」と「青」の境目です。\nクオリアル ─ Qualial で診断`;
+    const params = new URLSearchParams({
+      text: text,
+      url: SITE_URL,
+      hashtags: X_SHARE_HASHTAG
+    });
+    const intentUrl = `https://twitter.com/intent/tweet?${params.toString()}`;
+    window.open(intentUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  document.getElementById('saveImageBtn').addEventListener('click', downloadShareImage);
+  document.getElementById('xShareBtn').addEventListener('click', shareToX);
 
   // ─────────── 使い方モーダル ───────────
   const helpBtn = document.getElementById('helpBtn');
