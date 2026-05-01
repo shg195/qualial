@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="「緑」と「青」の境界を測るツール。">
+<meta name="theme-color" content="#f4efe6">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="light">
+<title>クオリアル ─ Qualial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;500;700;800&family=Noto+Sans+JP:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4efe6;
+    --bg-deep: #ebe4d6;
+    --ink: #1a1a1a;
+    --ink-soft: #4a4a4a;
+    --ink-faint: #8a8378;
+    --line: #c8bfae;
+    --accent: #8b2929;
+    --paper: #faf7f0;
+    --ref-green: hsl(142, 72%, 42%);
+    --ref-blue: hsl(220, 78%, 48%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 18% 25%, rgba(139, 41, 41, 0.025) 0%, transparent 35%),
+      radial-gradient(circle at 82% 75%, rgba(34, 80, 60, 0.03) 0%, transparent 45%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .stage {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+  }
+
+  /* ─────────── イントロ（LP） ─────────── */
+  .intro {
+    max-width: 580px;
+    width: 100%;
+    text-align: center;
+    animation: fadeUp 0.9s ease;
+    position: relative;
+  }
+
+  .intro__brand {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  .intro__brand-jp {
+    display: block;
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 700;
+    font-size: clamp(2.2rem, 5.5vw, 3rem);
+    letter-spacing: 0.5em;
+    color: var(--ink);
+    padding-left: 0.5em;
+    line-height: 1;
+  }
+
+  .intro__tagline {
+    font-family: 'Shippori Mincho B1', serif;
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-bottom: 3.5rem;
+    line-height: 2;
+  }
+  .intro__tagline::before, .intro__tagline::after {
+    content: '─';
+    color: var(--line);
+    margin: 0 0.7em;
+    opacity: 0.7;
+  }
+  .intro__tagline .is-green { color: hsl(140, 55%, 32%); font-weight: 500; }
+  .intro__tagline .is-blue  { color: hsl(220, 65%, 38%); font-weight: 500; }
+
+  /* 操作デモ */
+  .intro__demo {
+    margin: 0 auto 4rem;
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 16 / 9;
+    background: var(--paper);
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1.6fr 1fr;
+    gap: 8px;
+    position: relative;
+    box-shadow:
+      0 2px 6px rgba(0,0,0,0.05),
+      0 14px 36px rgba(0,0,0,0.10),
+      0 32px 60px rgba(0,0,0,0.06);
+  }
+  .intro__demo::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .intro__demo-ref {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    transition: box-shadow 0.4s ease;
+  }
+  .intro__demo-ref::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(0,0,0,0.10) 100%);
+    pointer-events: none;
+  }
+  .intro__demo-ref::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(255,255,255,0.35);
+    pointer-events: none;
+  }
+  .intro__demo-ref--green { background: var(--ref-green); }
+  .intro__demo-ref--blue  { background: var(--ref-blue);  }
+
+  .intro__demo-ref--green.is-glow {
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7), 0 0 24px rgba(34,180,90,0.6);
+  }
+  .intro__demo-ref--blue.is-glow {
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.7), 0 0 24px rgba(40,90,220,0.6);
+  }
+
+  .intro__demo-stage {
+    position: relative;
+    z-index: 3;
+  }
+
+  .intro__demo-card {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 56%;
+    aspect-ratio: 3 / 4;
+    background: var(--paper);
+    padding: 6px;
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.08),
+      0 8px 20px rgba(0,0,0,0.18);
+    transform: translate(-50%, -50%);
+    will-change: transform, opacity;
+  }
+  .intro__demo-card-color {
+    width: 100%;
+    height: 100%;
+    background: hsl(180, 78%, 50%);
+    transition: background-color 0.5s ease;
+  }
+
+  .intro__start {
+    font-family: 'Shippori Mincho B1', serif;
+    font-size: 1rem;
+    letter-spacing: 0.35em;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 1.2rem 3.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .intro__start::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(250, 247, 240, 0.3);
+    pointer-events: none;
+    transition: inset 0.3s ease;
+  }
+  .intro__start:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+  .intro__start:hover::before { inset: 8px; }
+
+  /* ヘルプアイコン（LP右上） */
+  .intro__help {
+    position: fixed;
+    top: 1.4rem;
+    right: 1.4rem;
+    z-index: 5;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 0;
+  }
+  .intro__help:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+  }
+
+  /* モーダル */
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .modal.is-open {
+    display: flex;
+  }
+  .modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 22, 18, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    cursor: pointer;
+    animation: modalFade 0.3s ease;
+  }
+  .modal__panel {
+    position: relative;
+    background: var(--paper);
+    padding: 2.6rem 2rem 2.2rem;
+    max-width: 440px;
+    width: 100%;
+    box-shadow:
+      0 24px 60px rgba(0,0,0,0.32),
+      0 4px 16px rgba(0,0,0,0.15);
+    animation: modalSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .modal__panel::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+  .modal__close {
+    position: absolute;
+    top: 0.8rem;
+    right: 0.9rem;
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+  .modal__close:hover {
+    color: var(--accent);
+    transform: rotate(90deg);
+  }
+  .modal__title {
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.5em;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 1.6rem;
+    position: relative;
+    z-index: 1;
+  }
+  .modal__content {
+    font-size: 0.92rem;
+    line-height: 2;
+    color: var(--ink-soft);
+    position: relative;
+    z-index: 1;
+  }
+  .modal__content ol {
+    list-style: none;
+    counter-reset: helpcount;
+    padding: 0;
+    margin: 0;
+  }
+  .modal__content li {
+    counter-increment: helpcount;
+    position: relative;
+    padding: 0.6rem 0 0.6rem 2.4rem;
+  }
+  .modal__content li::before {
+    content: counter(helpcount);
+    position: absolute;
+    left: 0; top: 0.7rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    text-align: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+  }
+  .modal__content b {
+    color: var(--ink);
+    font-weight: 500;
+    font-family: 'Shippori Mincho B1', serif;
+  }
+  .modal__content .is-green { color: hsl(140, 50%, 28%); font-weight: 500; }
+  .modal__content .is-blue  { color: hsl(220, 65%, 32%); font-weight: 500; }
+
+  /* 閉じるアニメーション */
+  .modal.is-closing .modal__backdrop {
+    animation: modalFadeOut 0.28s ease forwards;
+  }
+  .modal.is-closing .modal__panel {
+    animation: modalSlideOut 0.28s ease forwards;
+  }
+
+  @keyframes modalFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes modalSlide {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  @keyframes modalFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  @keyframes modalSlideOut {
+    from { opacity: 1; transform: translateY(0)    scale(1); }
+    to   { opacity: 0; transform: translateY(8px)  scale(0.97); }
+  }
+
+  /* ─────────── テスト ─────────── */
+  .test { display: none; }
+  .test.active {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 10;
+    animation: fadeUp 0.5s ease;
+  }
+  .test__topbar {
+    flex: 0 0 auto;
+    padding: 1.4rem 1.5rem 0.6rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .test__progress {
+    display: flex;
+    gap: 0.55rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+  }
+  .progress-dot {
+    width: 7px; height: 7px;
+    border: 1px solid var(--line);
+    transform: rotate(45deg);
+    transition: all 0.4s ease;
+  }
+  .progress-dot.done {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+  .progress-dot.current {
+    background: var(--accent);
+    border-color: var(--accent);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: rotate(45deg) scale(1); }
+    50% { transform: rotate(45deg) scale(1.3); }
+  }
+
+  /* 診断中のリセットボタン（アイコン） */
+  .test__reset {
+    position: absolute;
+    top: 1.1rem;
+    right: calc(1.4rem + 38px + 10px);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-faint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.25s ease;
+    z-index: 11;
+  }
+  .test__reset:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: var(--paper);
+    transform: rotate(-45deg);
+  }
+  .test__reset svg {
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .test__help {
+    position: absolute;
+    top: 1.1rem;
+    right: 1.4rem;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-faint);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    transition: all 0.25s ease;
+    z-index: 11;
+  }
+  .test__help:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: var(--paper);
+    transform: translateY(-1px);
+  }
+
+  /* アリーナ */
+  .arena {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 0.85fr 2.1fr 0.85fr;
+    gap: 1rem;
+    padding: 1rem 1.2rem 1.4rem;
+    min-height: 0;
+  }
+
+  .reference {
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+    box-shadow:
+      0 1px 3px rgba(0,0,0,0.08),
+      0 8px 24px rgba(0,0,0,0.10);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.4s ease,
+                filter 0.3s ease;
+    overflow: hidden;
+    user-select: none;
+  }
+  .reference::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+      rgba(255,255,255,0.18) 0%,
+      rgba(255,255,255,0) 40%,
+      rgba(0,0,0,0.10) 100%);
+    pointer-events: none;
+  }
+  .reference::after {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1px solid rgba(255,255,255,0.35);
+    pointer-events: none;
+  }
+  .reference--green { background: var(--ref-green); }
+  .reference--blue  { background: var(--ref-blue);  }
+
+  .reference--green.is-target {
+    box-shadow: 0 0 40px rgba(34, 180, 90, 0.55), 0 12px 32px rgba(0,0,0,0.15);
+  }
+  .reference--blue.is-target {
+    box-shadow: 0 0 40px rgba(40, 90, 220, 0.55), 0 12px 32px rgba(0,0,0,0.15);
+  }
+  .reference:hover { transform: scale(1.02); }
+
+  /* 中央：カードエリア（参照より常に上のレイヤー） */
+  .card-area {
+    position: relative;
+    z-index: 3;
+  }
+
+  /* テストカード */
+  .card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: clamp(220px, 88%, 320px);
+    aspect-ratio: 3 / 4;
+    background: var(--paper);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 2px 4px rgba(0,0,0,0.08),
+      0 14px 32px rgba(0,0,0,0.20),
+      0 32px 64px rgba(0,0,0,0.10);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    will-change: transform;
+    transform: translate(-50%, -50%) rotate(0deg);
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.3s ease;
+  }
+  .card.dragging {
+    cursor: grabbing;
+    transition: none;
+    box-shadow:
+      0 4px 8px rgba(0,0,0,0.12),
+      0 28px 56px rgba(0,0,0,0.28);
+  }
+
+  /* 装飾 ─ 二重の細線 */
+  .card__deco {
+    flex: 0 0 auto;
+    height: 5px;
+    border-top: 1px solid var(--ink-faint);
+    border-bottom: 1px solid var(--ink-faint);
+    opacity: 0.32;
+  }
+  .card__deco--top    { margin-bottom: 12px; }
+  .card__deco--bottom { margin-top: 12px;    }
+
+  /* カラー領域 */
+  .card__color {
+    flex: 1 1 auto;
+    transition: background-color 0.4s ease;
+    position: relative;
+    min-height: 0;
+  }
+  .card__corner {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-color: rgba(255,255,255,0.7);
+    border-style: solid;
+    border-width: 0;
+    pointer-events: none;
+  }
+  .card__corner--tl { top: 4px;    left: 4px;   border-top-width: 1px;    border-left-width: 1px;   }
+  .card__corner--tr { top: 4px;    right: 4px;  border-top-width: 1px;    border-right-width: 1px;  }
+  .card__corner--bl { bottom: 4px; left: 4px;   border-bottom-width: 1px; border-left-width: 1px;   }
+  .card__corner--br { bottom: 4px; right: 4px;  border-bottom-width: 1px; border-right-width: 1px;  }
+
+  /* ─────────── 結果 ─────────── */
+  .result {
+    max-width: 720px;
+    width: 100%;
+    display: none;
+    text-align: center;
+  }
+  .result.active {
+    display: block;
+    animation: fadeUp 0.9s ease;
+  }
+
+  /* グラデーションバー枠（境界色フレームと統一されたデザイン） */
+  .result__gradient-frame {
+    margin: 2rem 0 2.2rem;
+    background: var(--paper);
+    padding: 14px;
+    position: relative;
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.08),
+      0 4px 14px rgba(0,0,0,0.10);
+  }
+  .result__gradient-frame::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+  .result__gradient-wrap {
+    position: relative;
+    z-index: 1;
+    padding: 14px 0;
+  }
+  .result__gradient {
+    height: 50px;
+    background: linear-gradient(to right,
+      hsl(155, 78%, 50%),
+      hsl(170, 78%, 50%),
+      hsl(180, 78%, 50%),
+      hsl(195, 78%, 50%),
+      hsl(210, 78%, 50%));
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.08),
+      0 2px 6px rgba(0,0,0,0.1);
+  }
+  .result__gradient-marker {
+    position: absolute;
+    top: 6px;
+    width: 0; height: 70px;
+    transform: translateX(-50%);
+  }
+  .result__gradient-marker::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: 50%;
+    width: 2px; height: 72px;
+    background: var(--ink);
+    transform: translateX(-50%);
+  }
+  .result__gradient-marker::after {
+    content: '';
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 18px; height: 18px;
+    background: var(--marker-color, var(--ink));
+    border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--ink), 0 3px 8px rgba(0,0,0,0.2);
+  }
+
+  /* 結果まとめ（境界の色 + 中間色） */
+  .result__main {
+    background: var(--paper);
+    padding: 2.4rem 2.2rem 2.6rem;
+    margin: 0 0 2rem;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+  .result__main::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+  .result__main > * { position: relative; z-index: 1; }
+
+  .result__main-title {
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.5em;
+    color: var(--accent);
+    text-align: center;
+    margin: 0 0 2rem;
+  }
+
+  /* 境界の色（横並びのみ、枠は持たない） */
+  .result__boundary-row {
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    text-align: left;
+  }
+  /* 境界色の装飾フレーム */
+  .result__swatch-frame {
+    flex: 0 0 auto;
+    background: var(--paper);
+    padding: 18px;
+    position: relative;
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.08),
+      0 6px 18px rgba(0,0,0,0.14);
+  }
+  .result__swatch-frame::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+  /* 4 つ角の装飾マーク */
+  .result__swatch-frame::after {
+    content: '';
+    position: absolute;
+    top: 9px; left: 9px; right: 9px; bottom: 9px;
+    pointer-events: none;
+    background:
+      linear-gradient(to right,  var(--ink-faint) 0, var(--ink-faint) 100%) top    left  / 8px 1px no-repeat,
+      linear-gradient(to bottom, var(--ink-faint) 0, var(--ink-faint) 100%) top    left  / 1px 8px no-repeat,
+      linear-gradient(to right,  var(--ink-faint) 0, var(--ink-faint) 100%) top    right / 8px 1px no-repeat,
+      linear-gradient(to bottom, var(--ink-faint) 0, var(--ink-faint) 100%) top    right / 1px 8px no-repeat,
+      linear-gradient(to right,  var(--ink-faint) 0, var(--ink-faint) 100%) bottom left  / 8px 1px no-repeat,
+      linear-gradient(to bottom, var(--ink-faint) 0, var(--ink-faint) 100%) bottom left  / 1px 8px no-repeat,
+      linear-gradient(to right,  var(--ink-faint) 0, var(--ink-faint) 100%) bottom right / 8px 1px no-repeat,
+      linear-gradient(to bottom, var(--ink-faint) 0, var(--ink-faint) 100%) bottom right / 1px 8px no-repeat;
+    opacity: 0.5;
+  }
+  .result__swatch {
+    width: 130px;
+    height: 130px;
+    background: var(--user-color, hsl(180, 78%, 50%));
+    position: relative;
+    z-index: 1;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+  }
+  .result__boundary-info { flex: 1; }
+  .result__hue {
+    font-family: 'Shippori Mincho B1', serif;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+    margin-bottom: 0.6rem;
+  }
+  .result__hue b {
+    font-weight: 700;
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    color: var(--ink);
+    margin: 0 0.1em;
+  }
+  .result__desc {
+    font-size: 0.9rem;
+    line-height: 1.9;
+    color: var(--ink-soft);
+  }
+  .result__desc .is-green { color: hsl(140, 55%, 32%); font-weight: 500; }
+  .result__desc .is-blue  { color: hsl(220, 65%, 38%); font-weight: 500; }
+
+  /* 中間色サンプル */
+  .result__samples-title {
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 500;
+    font-size: 0.92rem;
+    letter-spacing: 0.25em;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-bottom: 1.4rem;
+  }
+  /* 中間色サンプル枠（境界色フレームと統一） */
+  .result__samples-frame {
+    background: var(--paper);
+    padding: 18px 18px 14px;
+    margin-top: 1.4rem;
+    position: relative;
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.08),
+      0 4px 14px rgba(0,0,0,0.10);
+  }
+  .result__samples-frame::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+  .result__samples-frame > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .result__samples {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-bottom: 0.9rem;
+  }
+  .result__sample {
+    position: relative;
+  }
+  .result__sample-color {
+    width: 100%;
+    aspect-ratio: 1;
+    box-shadow:
+      inset 0 0 0 1px rgba(0,0,0,0.06);
+  }
+
+  /* 軸ラベル（緑 ← 境目 → 青、5列グリッド） */
+  .result__samples-axis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    text-align: center;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    font-family: 'Shippori Mincho B1', serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.2em;
+  }
+  .result__samples-axis-arrow {
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+  .result__samples-axis .is-green {
+    color: hsl(140, 50%, 28%);
+    font-weight: 700;
+  }
+  .result__samples-axis .is-boundary {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.16em;
+  }
+  .result__samples-axis .is-blue {
+    color: hsl(220, 65%, 32%);
+    font-weight: 700;
+  }
+
+  .result__actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2.5rem;
+    flex-wrap: wrap;
+  }
+  .action-btn {
+    font-family: 'Shippori Mincho B1', serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.3em;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 1.15rem 2.6rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .action-btn::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(250, 247, 240, 0.3);
+    pointer-events: none;
+    transition: inset 0.3s ease;
+  }
+  .action-btn:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  }
+  .action-btn:hover::before { inset: 8px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─────────── レスポンシブ ─────────── */
+  @media (max-width: 720px) {
+    .arena {
+      grid-template-columns: 0.75fr 2.4fr 0.75fr;
+      gap: 0.6rem;
+      padding: 0.8rem 0.8rem 1rem;
+    }
+    .reference::after { inset: 6px; }
+    .card { width: clamp(200px, 92%, 280px); padding: 12px; }
+    .test__topbar { padding: 1rem 1rem 0.4rem; }
+    .test__reset { top: 0.9rem; right: calc(1rem + 34px + 8px); width: 34px; height: 34px; }
+    .test__help  { top: 0.9rem; right: 1rem; width: 34px; height: 34px; }
+    .intro__demo { margin-bottom: 3rem; }
+    .result__main { padding: 1.8rem 1.4rem 2rem; }
+    .result__main-title { font-size: 1rem; letter-spacing: 0.45em; }
+    .result__boundary-row {
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      text-align: center;
+    }
+    .result__boundary-info { text-align: center; }
+    .result__swatch { width: 110px; height: 110px; }
+    .result__swatch-frame { padding: 14px; }
+    .result__gradient-frame { padding: 12px; margin: 1.6rem 0 1.8rem; }
+    .result__samples-frame { padding: 14px 14px 12px; margin-top: 1.2rem; }
+    .result__samples { gap: 0.5rem; }
+  }
+
+  @media (max-height: 640px) {
+    .test__topbar { padding-top: 0.7rem; }
+    .card { width: clamp(180px, 80%, 240px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- ─── イントロ ─── -->
+  <div class="intro" id="intro">
+
+    <button class="intro__help" id="helpBtn" aria-label="使い方" title="使い方">?</button>
+
+    <div class="intro__brand">
+      <span class="intro__brand-jp">クオリアル</span>
+    </div>
+
+    <p class="intro__tagline">「<span class="is-green">緑</span>」と「<span class="is-blue">青</span>」の境目を測る</p>
+
+    <!-- 操作デモ：傾けて → ランダム色に変わる -->
+    <div class="intro__demo" aria-hidden="true">
+      <div class="intro__demo-ref intro__demo-ref--green" id="demoRefGreen"></div>
+      <div class="intro__demo-stage">
+        <div class="intro__demo-card" id="demoCard">
+          <div class="intro__demo-card-color" id="demoCardColor"></div>
+        </div>
+      </div>
+      <div class="intro__demo-ref intro__demo-ref--blue" id="demoRefBlue"></div>
+    </div>
+
+    <button class="intro__start" id="startBtn">は じ め る</button>
+
+  </div>
+
+  <!-- ─── テスト ─── -->
+  <div class="test" id="test">
+    <div class="test__topbar">
+      <button class="test__reset" id="testResetBtn" aria-label="リセット" title="リセット">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-3-6.708"/>
+          <polyline points="21 4 21 8.5 16.5 8.5"/>
+        </svg>
+      </button>
+      <button class="test__help" id="testHelpBtn" aria-label="使い方" title="使い方">?</button>
+      <div class="test__progress" id="progress"></div>
+    </div>
+
+    <div class="arena">
+      <!-- 左：基準・緑 -->
+      <div class="reference reference--green" data-answer="green" id="refGreen"></div>
+
+      <!-- 中央：カード -->
+      <div class="card-area">
+        <div class="card" id="card">
+          <div class="card__deco card__deco--top"></div>
+          <div class="card__color" id="cardColor">
+            <div class="card__corner card__corner--tl"></div>
+            <div class="card__corner card__corner--tr"></div>
+            <div class="card__corner card__corner--bl"></div>
+            <div class="card__corner card__corner--br"></div>
+          </div>
+          <div class="card__deco card__deco--bottom"></div>
+        </div>
+      </div>
+
+      <!-- 右：基準・青 -->
+      <div class="reference reference--blue" data-answer="blue" id="refBlue"></div>
+    </div>
+  </div>
+
+  <!-- ─── 結果 ─── -->
+  <div class="result" id="result">
+    <!-- 結果まとめ（境界の色 + グラデーションバー + 中間色） -->
+    <div class="result__main">
+      <div class="result__main-title">─ 結 果 ─</div>
+
+      <!-- 境界の色 -->
+      <div class="result__boundary-row">
+        <div class="result__swatch-frame">
+          <div class="result__swatch" id="resultSwatch"></div>
+        </div>
+        <div class="result__boundary-info">
+          <div class="result__hue">色相 <b id="resultHue">175</b>°</div>
+          <p class="result__desc">この色が、あなたの「<span class="is-green">緑</span>」と「<span class="is-blue">青</span>」の境目です。</p>
+        </div>
+      </div>
+
+      <!-- グラデーションバー（境界色フレームと統一された枠つき） -->
+      <div class="result__gradient-frame">
+        <div class="result__gradient-wrap">
+          <div class="result__gradient"></div>
+          <div class="result__gradient-marker" id="marker"></div>
+        </div>
+      </div>
+
+      <!-- 中間色サンプル（枠つき） -->
+      <div class="result__samples-title">あなたはこの色をこう感じます</div>
+      <div class="result__samples-frame">
+        <div class="result__samples" id="resultSamples"></div>
+        <div class="result__samples-axis">
+          <span class="is-green">緑</span>
+          <span class="result__samples-axis-arrow">←</span>
+          <span class="is-boundary">境目</span>
+          <span class="result__samples-axis-arrow">→</span>
+          <span class="is-blue">青</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result__actions">
+      <button class="action-btn" id="restartBtn">も う 一 度</button>
+      <button class="action-btn" id="shareBtn">結 果 を コ ピ ー</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── 使い方モーダル ─── -->
+<div class="modal" id="helpModal" aria-hidden="true" role="dialog" aria-labelledby="helpTitle">
+  <div class="modal__backdrop" id="modalBackdrop"></div>
+  <div class="modal__panel" role="document">
+    <button class="modal__close" id="modalClose" aria-label="閉じる">×</button>
+    <div class="modal__title" id="helpTitle">使 い 方</div>
+    <div class="modal__content">
+      <ol>
+        <li>「はじめる」を押すと診断が開始します。全 <b>8 問</b>です。</li>
+        <li>表示される色を、「<b class="is-green">緑</b>」と感じたら<b>左へ</b>、「<b class="is-blue">青</b>」と感じたら<b>右へ</b>カードをドラッグしてください。</li>
+        <li>全問終了すると、あなたの「<b class="is-green">緑</b>」と「<b class="is-blue">青</b>」の境目となる色が表示されます。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─────────── 設定 ───────────
+  const TOTAL_QUESTIONS = 8;
+  const HUE_MIN = 155;
+  const HUE_MAX = 210;
+  const SATURATION = 78;
+  const LIGHTNESS = 50;
+  const COMMIT_THRESHOLD = 130; // 判定確定までのドラッグ距離(px)
+  const TILT_FACTOR = 0.18;     // 回転角(度/px)
+  const MAX_TILT = 24;
+  const RUBBER_DAMP = 0.28;     // 閾値超過時の減衰係数
+  const MAX_OVERFLOW = 50;      // 閾値超過の最大量(px)
+
+  // ─────────── 状態 ───────────
+  let currentQ = 0;
+  let lowBound = HUE_MIN;
+  let highBound = HUE_MAX;
+  let currentHue = (HUE_MIN + HUE_MAX) / 2;
+  let testActive = false;
+  let dragging = false;
+  let startX = 0;
+  let dx = 0;
+  let pointerId = null;
+
+  // ─────────── DOM ───────────
+  const intro = document.getElementById('intro');
+  const test = document.getElementById('test');
+  const result = document.getElementById('result');
+  const startBtn = document.getElementById('startBtn');
+  const cardEl = document.getElementById('card');
+  const cardColor = document.getElementById('cardColor');
+  const progress = document.getElementById('progress');
+  const refGreen = document.getElementById('refGreen');
+  const refBlue = document.getElementById('refBlue');
+  const restartBtn = document.getElementById('restartBtn');
+  const testResetBtn = document.getElementById('testResetBtn');
+  const shareBtn = document.getElementById('shareBtn');
+
+  // LP demo DOM
+  const demoCard = document.getElementById('demoCard');
+  const demoCardColor = document.getElementById('demoCardColor');
+  const demoRefGreen = document.getElementById('demoRefGreen');
+  const demoRefBlue = document.getElementById('demoRefBlue');
+
+  // ─────────── 進捗ドット ───────────
+  function buildProgressDots() {
+    progress.querySelectorAll('.progress-dot').forEach(d => d.remove());
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+      const dot = document.createElement('span');
+      dot.className = 'progress-dot';
+      progress.appendChild(dot);
+    }
+    updateProgressDots();
+  }
+  function updateProgressDots() {
+    const dots = progress.querySelectorAll('.progress-dot');
+    dots.forEach((d, i) => {
+      d.classList.remove('done', 'current');
+      if (i < currentQ) d.classList.add('done');
+      else if (i === currentQ) d.classList.add('current');
+    });
+  }
+
+  // ─────────── 出題 ───────────
+  function pickNextHue() {
+    const mid = (lowBound + highBound) / 2;
+    const range = highBound - lowBound;
+    const jitter = (Math.random() - 0.5) * Math.min(range * 0.25, 4);
+    return Math.max(HUE_MIN, Math.min(HUE_MAX, mid + jitter));
+  }
+  function showColor() {
+    currentHue = pickNextHue();
+    cardColor.style.background = `hsl(${currentHue}, ${SATURATION}%, ${LIGHTNESS}%)`;
+    updateProgressDots();
+  }
+
+  function clearRefHighlights() {
+    refGreen.classList.remove('is-target');
+    refBlue.classList.remove('is-target');
+  }
+
+  // ─────────── 投票 ───────────
+  function vote(answer) {
+    if (!testActive) return;
+    testActive = false;
+
+    if (answer === 'blue') highBound = currentHue;
+    else lowBound = currentHue;
+
+    const direction = answer === 'blue' ? 1 : -1;
+    const flyX = direction * (window.innerWidth * 0.7);
+    const flyRot = direction * 35;
+    cardEl.style.transition = 'transform 0.45s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.4s ease';
+    cardEl.style.transform = `translate(calc(-50% + ${flyX}px), calc(-50% - 40px)) rotate(${flyRot}deg)`;
+    cardEl.style.opacity = '0';
+    clearRefHighlights();
+
+    setTimeout(() => {
+      currentQ++;
+      if (currentQ >= TOTAL_QUESTIONS) {
+        finishTest();
+      } else {
+        cardEl.style.transition = 'none';
+        cardEl.style.transform = 'translate(-50%, calc(-50% + 60px)) rotate(0deg)';
+        cardEl.style.opacity = '0';
+        showColor();
+        void cardEl.offsetWidth;
+        cardEl.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease';
+        cardEl.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+        cardEl.style.opacity = '1';
+        testActive = true;
+      }
+    }, 450);
+  }
+
+  // ─────────── ドラッグ ───────────
+  function applyRubberBand(raw) {
+    if (Math.abs(raw) <= COMMIT_THRESHOLD) return raw;
+    const overflow = Math.abs(raw) - COMMIT_THRESHOLD;
+    const damped = Math.min(overflow * RUBBER_DAMP, MAX_OVERFLOW);
+    return Math.sign(raw) * (COMMIT_THRESHOLD + damped);
+  }
+
+  function onPointerDown(e) {
+    if (!testActive) return;
+    dragging = true;
+    startX = e.clientX;
+    dx = 0;
+    pointerId = e.pointerId;
+    cardEl.setPointerCapture(e.pointerId);
+    cardEl.classList.add('dragging');
+    cardEl.style.transition = 'none';
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const raw = e.clientX - startX;
+    dx = raw;
+
+    // ラバーバンド：閾値内は1:1、超過分は強く減衰
+    const visX = applyRubberBand(raw);
+    const rotation = Math.max(-MAX_TILT, Math.min(MAX_TILT, visX * TILT_FACTOR));
+    const lift = Math.min(Math.abs(visX) * 0.06, 8);
+    cardEl.style.transform = `translate(calc(-50% + ${visX}px), calc(-50% - ${lift}px)) rotate(${rotation}deg)`;
+
+    if (visX > 5) {
+      refBlue.classList.add('is-target');
+      refGreen.classList.remove('is-target');
+    } else if (visX < -5) {
+      refGreen.classList.add('is-target');
+      refBlue.classList.remove('is-target');
+    } else {
+      clearRefHighlights();
+    }
+  }
+
+  function onPointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    cardEl.classList.remove('dragging');
+    if (pointerId !== null) {
+      try { cardEl.releasePointerCapture(pointerId); } catch (_) {}
+      pointerId = null;
+    }
+
+    if (Math.abs(dx) >= COMMIT_THRESHOLD) {
+      vote(dx > 0 ? 'blue' : 'green');
+    } else {
+      cardEl.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      cardEl.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+      clearRefHighlights();
+    }
+    dx = 0;
+  }
+
+  cardEl.addEventListener('pointerdown', onPointerDown);
+  cardEl.addEventListener('pointermove', onPointerMove);
+  cardEl.addEventListener('pointerup', onPointerUp);
+  cardEl.addEventListener('pointercancel', onPointerUp);
+
+  // 基準色クリックでも投票（補助）
+  refGreen.addEventListener('click', () => { if (testActive) vote('green'); });
+  refBlue.addEventListener('click', () => { if (testActive) vote('blue'); });
+
+  // キーボード
+  document.addEventListener('keydown', (e) => {
+    if (!testActive) return;
+    if (e.key === 'ArrowLeft' || e.key === 'g' || e.key === 'G') {
+      vote('green');
+    } else if (e.key === 'ArrowRight' || e.key === 'b' || e.key === 'B') {
+      vote('blue');
+    }
+  });
+
+  // ─────────── 結果 ───────────
+  // 中間色サンプルのオフセット（境界からの相対値）。0 は境目そのもの
+  const SAMPLE_OFFSETS = [-15, -7, 0, 7, 15];
+
+  function finishTest() {
+    const finalHue = Math.round((lowBound + highBound) / 2);
+    const userColor = `hsl(${finalHue}, ${SATURATION}%, ${LIGHTNESS}%)`;
+
+    // バー上のマーカー（位置と色）
+    const markerEl = document.getElementById('marker');
+    const positionPercent = ((finalHue - HUE_MIN) / (HUE_MAX - HUE_MIN)) * 100;
+    markerEl.style.left = `${positionPercent}%`;
+    markerEl.style.setProperty('--marker-color', userColor);
+
+    // 境界の色そのもの
+    const swatchEl = document.getElementById('resultSwatch');
+    swatchEl.style.background = userColor;
+    document.getElementById('resultHue').textContent = finalHue;
+
+    // ─── 中間色サンプル（中央が境目） ───
+    const samplesEl = document.getElementById('resultSamples');
+    samplesEl.innerHTML = '';
+    let greenCount = 0, blueCount = 0;
+    SAMPLE_OFFSETS.forEach(offset => {
+      const sampleHue = Math.max(HUE_MIN, Math.min(HUE_MAX, finalHue + offset));
+      const sample = document.createElement('div');
+      sample.className = 'result__sample';
+      if (offset === 0) {
+        sample.classList.add('is-boundary');
+      } else if (offset < 0) {
+        greenCount++;
+      } else {
+        blueCount++;
+      }
+      sample.innerHTML =
+        `<div class="result__sample-color" style="background: hsl(${sampleHue}, ${SATURATION}%, ${LIGHTNESS}%)"></div>`;
+      samplesEl.appendChild(sample);
+    });
+
+    // シェア用テキスト（結果画面の文言を一人称に置き換え）
+    shareBtn.dataset.text =
+      `色相 ${finalHue}°\n` +
+      `この色が、私の「緑」と「青」の境目です。\n` +
+      `\n` +
+      `私はこの色をこう感じます。\n` +
+      `中間色を、緑 ${greenCount} 色 / 青 ${blueCount} 色 と感じました。`;
+
+    test.classList.remove('active');
+    setTimeout(() => {
+      result.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
+  }
+
+  // ─────────── イベント ───────────
+  function goToIntro() {
+    test.classList.remove('active');
+    result.classList.remove('active');
+    intro.style.display = 'block';
+    testActive = false;
+    currentQ = 0;
+    lowBound = HUE_MIN;
+    highBound = HUE_MAX;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    startDemo();
+  }
+
+  // テスト開始処理（共通化）
+  function beginTest() {
+    stopDemo();
+    intro.style.display = 'none';
+    result.classList.remove('active');
+    test.classList.add('active');
+    currentQ = 0;
+    lowBound = HUE_MIN;
+    highBound = HUE_MAX;
+    buildProgressDots();
+
+    cardEl.style.transition = 'none';
+    cardEl.style.transform = 'translate(-50%, calc(-50% + 60px)) rotate(0deg)';
+    cardEl.style.opacity = '0';
+    showColor();
+    void cardEl.offsetWidth;
+    cardEl.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease';
+    cardEl.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+    cardEl.style.opacity = '1';
+    testActive = true;
+  }
+
+  startBtn.addEventListener('click', beginTest);
+
+  // 結果画面の「もう一度」→ そのまま新しいテストを開始
+  restartBtn.addEventListener('click', beginTest);
+
+  // 診断中の「リセット」→ LPに戻る
+  testResetBtn.addEventListener('click', goToIntro);
+
+  shareBtn.addEventListener('click', () => {
+    const text = shareBtn.dataset.text || '';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        const original = shareBtn.textContent;
+        shareBtn.textContent = 'コ ピ ー し ま し た';
+        setTimeout(() => { shareBtn.textContent = original; }, 1800);
+      });
+    }
+  });
+
+  // ─────────── 使い方モーダル ───────────
+  const helpBtn = document.getElementById('helpBtn');
+  const helpModal = document.getElementById('helpModal');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalClose = document.getElementById('modalClose');
+
+  function openHelp() {
+    helpModal.classList.remove('is-closing');
+    helpModal.classList.add('is-open');
+    helpModal.setAttribute('aria-hidden', 'false');
+  }
+  function closeHelp() {
+    if (!helpModal.classList.contains('is-open')) return;
+    helpModal.classList.add('is-closing');
+    setTimeout(() => {
+      helpModal.classList.remove('is-open', 'is-closing');
+      helpModal.setAttribute('aria-hidden', 'true');
+    }, 280);
+  }
+
+  helpBtn.addEventListener('click', openHelp);
+  document.getElementById('testHelpBtn').addEventListener('click', openHelp);
+  modalBackdrop.addEventListener('click', closeHelp);
+  modalClose.addEventListener('click', closeHelp);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && helpModal.classList.contains('is-open')) {
+      closeHelp();
+    }
+  });
+
+  // ─────────── LPデモ：傾けてランダム色に変化 ───────────
+  let demoActive = false;
+
+  function randomDemoHue() {
+    return HUE_MIN + Math.random() * (HUE_MAX - HUE_MIN);
+  }
+
+  function setDemoColor(hue) {
+    demoCardColor.style.background = `hsl(${hue}, ${SATURATION}%, ${LIGHTNESS}%)`;
+  }
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  async function runDemo() {
+    while (demoActive) {
+      // ─── 左（緑）への傾けデモ ───
+
+      // 下から登場（少しゆっくり）
+      demoCard.style.transition = 'none';
+      demoCard.style.transform = 'translate(-50%, calc(-50% + 36px)) rotate(0deg)';
+      demoCard.style.opacity = '0';
+      setDemoColor(randomDemoHue());
+      // ブラウザに上記の「初期状態」を確定させる
+      // eslint-disable-next-line no-unused-expressions
+      demoCard.offsetHeight;
+      await sleep(80);
+      if (!demoActive) break;
+      demoCard.style.transition = 'transform 0.75s cubic-bezier(0.34, 1.45, 0.55, 1), opacity 0.6s ease';
+      demoCard.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+      demoCard.style.opacity = '1';
+      await sleep(950);
+      if (!demoActive) break;
+
+      // 緑へ傾ける
+      demoCard.style.transition = 'transform 0.65s cubic-bezier(0.4, 0, 0.4, 1)';
+      demoCard.style.transform = 'translate(calc(-50% - 38%), -50%) rotate(-22deg)';
+      demoRefGreen.classList.add('is-glow');
+      await sleep(750);
+      if (!demoActive) break;
+
+      // 左に飛んでいく
+      demoCard.style.transition = 'transform 0.45s ease-in, opacity 0.35s ease';
+      demoCard.style.transform = 'translate(calc(-50% - 110%), -50%) rotate(-32deg)';
+      demoCard.style.opacity = '0';
+      await sleep(450);
+      demoRefGreen.classList.remove('is-glow');
+      if (!demoActive) break;
+
+      // ─── 右（青）への傾けデモ ───
+
+      // 下から登場（少しゆっくり）
+      demoCard.style.transition = 'none';
+      demoCard.style.transform = 'translate(-50%, calc(-50% + 36px)) rotate(0deg)';
+      demoCard.style.opacity = '0';
+      setDemoColor(randomDemoHue());
+      // eslint-disable-next-line no-unused-expressions
+      demoCard.offsetHeight;
+      await sleep(80);
+      if (!demoActive) break;
+      demoCard.style.transition = 'transform 0.75s cubic-bezier(0.34, 1.45, 0.55, 1), opacity 0.6s ease';
+      demoCard.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+      demoCard.style.opacity = '1';
+      await sleep(950);
+      if (!demoActive) break;
+
+      // 青へ傾ける
+      demoCard.style.transition = 'transform 0.65s cubic-bezier(0.4, 0, 0.4, 1)';
+      demoCard.style.transform = 'translate(calc(-50% + 38%), -50%) rotate(22deg)';
+      demoRefBlue.classList.add('is-glow');
+      await sleep(750);
+      if (!demoActive) break;
+
+      // 右に飛んでいく
+      demoCard.style.transition = 'transform 0.45s ease-in, opacity 0.35s ease';
+      demoCard.style.transform = 'translate(calc(-50% + 110%), -50%) rotate(32deg)';
+      demoCard.style.opacity = '0';
+      await sleep(450);
+      demoRefBlue.classList.remove('is-glow');
+    }
+  }
+
+  function startDemo() {
+    if (demoActive) return;
+    demoActive = true;
+    runDemo();
+  }
+  function stopDemo() {
+    demoActive = false;
+    demoRefGreen.classList.remove('is-glow');
+    demoRefBlue.classList.remove('is-glow');
+  }
+
+  // 初回起動
+  startDemo();
+</script>
+
+</body>
+</html>
