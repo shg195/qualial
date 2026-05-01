@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OGP 画像ジェネレータ ─ クオリアル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;500;700;800&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  body {
+    background: #f4efe6;
+    font-family: 'Noto Sans JP', sans-serif;
+    padding: 2rem;
+    text-align: center;
+    color: #1a1a1a;
+  }
+  h1 {
+    font-family: 'Shippori Mincho B1', serif;
+    font-weight: 700;
+    margin-bottom: 1.4rem;
+    letter-spacing: 0.2em;
+  }
+  canvas {
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+    background: #faf7f0;
+  }
+  button {
+    font-family: 'Shippori Mincho B1', serif;
+    font-size: 1rem;
+    letter-spacing: 0.3em;
+    background: #1a1a1a;
+    color: #faf7f0;
+    border: none;
+    padding: 1rem 2.4rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover {
+    background: #8b2929;
+  }
+  p.note {
+    margin-top: 1.5rem;
+    color: #4a4a4a;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+  code {
+    background: #ebe4d6;
+    padding: 0.1em 0.4em;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+<h1>OGP 画像ジェネレータ</h1>
+<canvas id="ogCanvas" width="1200" height="630"></canvas>
+<div>
+  <button id="downloadBtn">P N G を ダ ウ ン ロ ー ド</button>
+</div>
+<p class="note">
+  このツールは <code>og-image.png</code>（1200×630）を生成するためのスタンドアロンツールです。<br>
+  ダウンロードしたファイルをプロジェクトルートに <code>og-image.png</code> として配置してください。<br>
+  本ファイル自体は GitHub Pages 上に配信されますが、ボット等が直接開くケースを想定しないため OGP メタタグは持ちません。
+</p>
+
+<script>
+  const HUE_MIN = 155;
+  const HUE_MAX = 210;
+  const SATURATION = 78;
+  const LIGHTNESS = 50;
+
+  async function drawOG() {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
+    const canvas = document.getElementById('ogCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = 1200;
+    const H = 630;
+
+    // 背景（paper）
+    ctx.fillStyle = '#faf7f0';
+    ctx.fillRect(0, 0, W, H);
+
+    // 二重枠（外側細線・紙の額装表現）
+    ctx.strokeStyle = '#c8bfae';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(28, 28, W - 56, H - 56);
+
+    const mincho = '"Shippori Mincho B1", "Yu Mincho", serif';
+    const sans = '"Noto Sans JP", sans-serif';
+
+    ctx.textBaseline = 'alphabetic';
+
+    // ブランド「クオリアル」（大）
+    ctx.textAlign = 'center';
+    ctx.font = `700 110px ${mincho}`;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText('クオリアル', W / 2, 220);
+
+    // 「─ Qualial ─」
+    ctx.font = `400 36px ${mincho}`;
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillText('─ Qualial ─', W / 2, 280);
+
+    // タグライン（朱）
+    ctx.font = `500 40px ${mincho}`;
+    ctx.fillStyle = '#8b2929';
+    ctx.fillText('「緑」と「青」の境目を測る', W / 2, 380);
+
+    // 色相グラデーション
+    const gradX = 200;
+    const gradY = 460;
+    const gradW = W - 400;
+    const gradH = 60;
+    const grad = ctx.createLinearGradient(gradX, gradY, gradX + gradW, gradY);
+    for (let i = 0; i <= 4; i++) {
+      const t = i / 4;
+      const hue = HUE_MIN + (HUE_MAX - HUE_MIN) * t;
+      grad.addColorStop(t, `hsl(${hue}, ${SATURATION}%, ${LIGHTNESS}%)`);
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(gradX, gradY, gradW, gradH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.strokeRect(gradX, gradY, gradW, gradH);
+
+    // 軸ラベル「緑」「青」
+    ctx.font = `700 26px ${mincho}`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'hsl(140, 50%, 28%)';
+    ctx.fillText('緑', gradX, gradY + gradH + 38);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'hsl(220, 65%, 32%)';
+    ctx.fillText('青', gradX + gradW, gradY + gradH + 38);
+
+    // URL（下部）
+    ctx.textAlign = 'center';
+    ctx.font = `400 18px ${sans}`;
+    ctx.fillStyle = '#8a8378';
+    ctx.fillText('shg195.github.io/qualial', W / 2, H - 50);
+  }
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    const canvas = document.getElementById('ogCanvas');
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'og-image.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  });
+
+  drawOG();
+</script>
+</body>
+</html>
